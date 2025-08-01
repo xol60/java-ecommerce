@@ -66,4 +66,28 @@ public class ProductService {
     public Product getProductById(Long id) {
         return productRepository.findById(id).orElse(null);
     }
+
+    @KafkaListener(topics = "product-fetch-request", groupId = "product-service", containerFactory = "batchFactory")
+    public void handleProductFetch(List<String> messages,
+            @org.springframework.messaging.handler.annotation.Header("correlationId") String correlationId)
+            throws Exception {
+
+        // Parse danh sách ID
+        List<Long> ids = new ArrayList<>();
+        for (String msg : messages) {
+            ProductFetchRequest req = objectMapper.readValue(msg, ProductFetchRequest.class);
+            ids.addAll(req.getProductIds());
+        }
+
+        List<Product> products = productRepository.findAllById(ids);
+        List<ProductDto> productDtos = products.stream().map(p -> new ProductDto(p.getId(), p.getName(), p.getPrice()))
+                .toList();
+
+        ProductFetchResponse response = new ProductFetchResponse(productDtos);
+        String payload = objectMapper.writeValueAsString(response);
+
+        ProducerRecord<String, Object> record = new ProducerRecord<>("product-fetch-response", payload);
+        record.headers().add(new RecordHeader("correlationId", correlationId.getBytes(StandardCharsets.UTF_8)));
+        kafkaTemplate.send(record);
+    }
 }

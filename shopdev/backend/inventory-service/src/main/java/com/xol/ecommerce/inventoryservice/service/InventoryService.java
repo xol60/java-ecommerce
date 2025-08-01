@@ -129,4 +129,23 @@ public class InventoryService {
             }
         }
     }
+    
+    
+    public void updateInventoryBatch(List<InventoryUpdateRequest> updates) {
+        for (InventoryUpdateRequest update : updates) {
+            Inventory inventory = inventoryRepository.findByProductId(update.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Inventory not found: " + update.getProductId()));
+
+            if (inventory.getQuantity() < update.getQuantity()) {
+                throw new RuntimeException("Not enough inventory for product " + update.getProductId());
+            }
+
+            inventory.setQuantity(inventory.getQuantity() - update.getQuantity());
+        }
+
+        inventoryRepository.saveAll(
+                updates.stream()
+                        .map(update -> inventoryRepository.findByProductId(update.getProductId()).get())
+                        .toList());
+    }
 }
