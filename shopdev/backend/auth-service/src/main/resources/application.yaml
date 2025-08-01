@@ -1,6 +1,35 @@
 server:
-  port : 8081
+  port: 8081  # The port where the auth-service will run
+
 spring:
-  autoconfigure:
-    exclude: 
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  datasource:
+    url: jdbc:mysql://mysql:3306/ecommerce  # MySQL container connection URL
+    username: root                          # MySQL username
+    password: root123                       # MySQL password
+    driver-class-name: com.mysql.cj.jdbc.Driver  # JDBC driver for MySQL
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Automatically update the schema based on entity classes
+    show-sql: true       # Show SQL queries in the console (useful for debugging)
+    properties:
+      hibernate:
+        format_sql: true  # Format SQL queries nicely for readability
+
+  data:
+    redis:
+      host: redis         # Redis container hostname (must match docker-compose)
+      port: 6379          # Redis default port
+
+jwt:
+  expiration: 900000           # Access token expiration time (in milliseconds) = 15 minutes
+  refresh-expiration: 604800000  # Refresh token expiration time (in milliseconds) = 7 days
+resilience4j.circuitbreaker:
+  instances:
+    externalApi:
+      registerHealthIndicator: true
+      slidingWindowSize: 5
+      minimumNumberOfCalls: 3
+      failureRateThreshold: 50
+      waitDurationInOpenState: 10s
+      permittedNumberOfCallsInHalfOpenState: 2
