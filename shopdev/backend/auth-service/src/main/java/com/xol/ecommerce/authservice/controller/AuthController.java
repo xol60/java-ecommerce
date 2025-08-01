@@ -25,4 +25,10 @@ public class AuthController {
     public ResponseEntity<TokenResponse> refresh(@RequestBody String refreshToken) {
         return ResponseEntity.ok(authService.refreshToken(refreshToken));
     }
+
+    @PostMapping("/register")
+    @CircuitBreaker(name = "authService", fallbackMethod = "fallbackLogin")
+    public ResponseEntity<TokenResponse> register(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.register(request));
+    }
 }

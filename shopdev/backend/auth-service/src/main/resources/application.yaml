@@ -1,29 +1,43 @@
 server:
-  port: 8081  # The port where the auth-service will run
+  port: 8081
 
 spring:
   datasource:
-    url: jdbc:mysql://mysql:3306/ecommerce  # MySQL container connection URL
-    username: root                          # MySQL username
-    password: root123                       # MySQL password
-    driver-class-name: com.mysql.cj.jdbc.Driver  # JDBC driver for MySQL
+    url: jdbc:mysql://mysql:3306/ecommerce
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update  # Automatically update the schema based on entity classes
-    show-sql: true       # Show SQL queries in the console (useful for debugging)
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
-        format_sql: true  # Format SQL queries nicely for readability
+        format_sql: true
 
   data:
     redis:
-      host: redis         # Redis container hostname (must match docker-compose)
-      port: 6379          # Redis default port
+      host: redis
+      port: 6379
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    consumer:
+      group-id: auth-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 jwt:
-  expiration: 900000           # Access token expiration time (in milliseconds) = 15 minutes
-  refresh-expiration: 604800000  # Refresh token expiration time (in milliseconds) = 7 days
+  expiration: 900000
+  refresh-expiration: 604800000
+
 resilience4j.circuitbreaker:
   instances:
     externalApi:

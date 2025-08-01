@@ -48,14 +48,13 @@ public class AuthService {
 
         // Save to Redis
         Map<String, Object> cachedUser = Map.of(
-                "id", user.getId(),
                 "username", user.getUsername(),
                 "roles", user.getRoles(),
                 "publicKey", user.getPublicKey());
-        redisService.cacheUser(accessToken, cachedUser, Duration.of(accessTokenExpiration)); 
+        redisService.cacheUser(user.getUsername(), cachedUser, Duration.of(accessTokenExpiration)); 
 
-        // Trả về token
-        return new LoginResponse(accessToken, refreshTokenStr);
+
+        return new LoginResponse(accessToken, refreshTokenStr, user.getUsername());
 
     }
     
@@ -81,15 +80,66 @@ public class AuthService {
 
         // Save to Redis
         Map<String, Object> cachedUser = Map.of(
-                "id", user.getId(),
                 "username", user.getUsername(),
                 "roles", user.getRoles(),
                 "publicKey", user.getPublicKey());
-        redisService.cacheUser(accessToken, cachedUser, Duration.of(accessTokenExpiration)); 
+        redisService.cacheUser(user.getUsername(), cachedUser, Duration.of(accessTokenExpiration)); 
 
         // Trả về token
-        return new LoginResponse(accessToken, refreshTokenStr);
 
-        return new LoginResponse(newAccessToken, newRefreshTokenStr);
+        return new LoginResponse(newAccessToken, newRefreshTokenStr, username);
+    }
+
+    @Transactional
+    public LoginResponse register(LoginRequest request) {
+        // Check if user exists
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Username already exists");
+        }
+
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .roles(List.of("USER"))
+                .build();
+        user.setPublicKey(jwtUtil.getEncodedPublicKey());
+
+
+        UserRegisteredEvent event = UserRegisteredEvent.builder()
+                .username(user.getUsername())
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .role("USER")
+                .build();
+
+        boolean isUserCreated = userKafkaClient.sendUserRegistration(event);
+
+        if (!isUserCreated) {
+            throw new RuntimeException("User creation failed in user-service");
+        }
+
+        // Lưu user local sau khi user-service thành công
+        userRepository.save(user);
+
+        // Generate tokens
+        String accessToken = jwtUtil.generateAccessToken(user);
+        String refreshTokenStr = jwtUtil.generateRefreshToken(user);
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .user(user)
+                .token(refreshTokenStr)
+                .build();
+        refreshTokenRepository.save(refreshToken);
+
+        // Cache
+        Map<String, Object> cachedUser = Map.of(
+                "username", user.getUsername(),
+                "roles", user.getRoles(),
+                "publicKey", user.getPublicKey());
+        redisService.cacheUser(user.getUsername(), cachedUser, Duration.ofHours(1));
+
+        return new LoginResponse(accessToken, refreshTokenStr, user.getUsername());
     }
 }

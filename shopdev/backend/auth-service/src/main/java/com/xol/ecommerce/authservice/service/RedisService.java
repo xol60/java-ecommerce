@@ -15,20 +15,20 @@ public class RedisService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    public void cacheUser(String token, Object userInfo, Duration ttl) {
+    public void cacheUser(String username, Object userInfo, Duration ttl) {
         try {
             String json = objectMapper.writeValueAsString(userInfo);
-            redisTemplate.opsForValue().set("auth:user:" + token, json, ttl);
+            redisTemplate.opsForValue().set("auth:user:" + username, json, ttl);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to cache user", e);
         }
     }
 
-    public void deleteUser(String token) {
-        redisTemplate.delete("auth:user:" + token);
+    public void deleteUser(String username) {
+        redisTemplate.delete("auth:user:" + username);
     }
 
-    public String getCachedUser(String token) {
-        return redisTemplate.opsForValue().get("auth:user:" + token);
+    public String getCachedUser(String username) {
+        return redisTemplate.opsForValue().get("auth:user:" + username);
     }
 }
