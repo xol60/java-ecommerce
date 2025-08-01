@@ -2,40 +2,33 @@ version: '3.8'
 
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8
     container_name: mysql
-    restart: unless-stopped
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root123
       MYSQL_DATABASE: ecommerce
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
-    networks:
-      - backend
+      - mysql_data:/var/lib/mysql
 
   redis:
     image: redis:7
     container_name: redis
+    restart: always
     ports:
       - "6379:6379"
-    networks:
-      - backend
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
+    image: confluentinc/cp-zookeeper:7.4.0
     container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - backend
 
   kafka:
-    image: confluentinc/cp-kafka:7.6.1
+    image: confluentinc/cp-kafka:7.4.0
     container_name: kafka
     depends_on:
       - zookeeper
@@ -44,32 +37,62 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    networks:
-      - backend
 
   auth-service:
+    image: auth-service
+    container_name: auth-service
     build:
       context: ./auth-service
-    container_name: auth-service
+    ports:
+      - "8081:8081"
     depends_on:
       - mysql
       - redis
-    ports:
-      - "8081:8081"
+      - kafka
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ecommerce
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root123
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-    networks:
-      - backend
+      SPRING_PROFILES_ACTIVE: docker
 
-networks:
-  backend:
+  product-service:
+    image: product-service
+    container_name: product-service
+    build:
+      context: ./product-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - mysql
+      - redis
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+  inventory-service:
+    image: inventory-service
+    container_name: inventory-service
+    build:
+      context: ./inventory-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - redis
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+  order-service:
+    image: order-service
+    container_name: order-service
+    build:
+      context: ./order-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - redis
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
 
 volumes:
-  mysql-data:
+  mysql_data:
