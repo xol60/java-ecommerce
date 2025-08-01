@@ -1,0 +1,27 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: category-service
+
+  datasource:
+    url: jdbc:mysql://mysql:3306/ecommerce
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        cache.use_second_level_cache: true
+        cache.use_query_cache: true
+        cache.region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        javax.cache.provider: org.ehcache.jsr107.EhcacheCachingProvider
+        javax.cache.uri: classpath:ehcache.xml
+
+logging.level.org.hibernate.SQL: DEBUG
